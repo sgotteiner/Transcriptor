@@ -1,0 +1,43 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+        cache: 'pip'
+
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libsndfile1
+
+    - name: Install dependencies
+      run: |
+        pip install --upgrade pip
+        # Install CPU-only PyTorch first to avoid downloading heavy CUDA wheels on the runner
+        pip install torch --index-url https://download.pytorch.org/whl/cpu
+        pip install -e .[dev]
+        pip install ruff
+
+    - name: Lint with Ruff
+      run: |
+        ruff check app/
+
+    - name: Run tests
+      run: |
+        # Run unit tests only (fast tests with mocked backends; no weights needed)
+        pytest tests/unit/

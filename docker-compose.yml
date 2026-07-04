@@ -1,0 +1,63 @@
+services:
+  # Shared state broker and queue
+  redis:
+    image: redis:alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # Shared inference server — loads the model ONCE; api + workers call it over HTTP,
+  # so scaling workers no longer multiplies model copies in RAM.
+  model-server:
+    build: .
+    command: ["uvicorn", "app.model_server:app", "--host", "0.0.0.0", "--port", "8001"]
+    volumes:
+      # Only this service needs the weights cache now.
+      - hf_cache:/root/.cache/huggingface
+    healthcheck:
+      # /healthz only responds once the model has finished warming (blocking startup).
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8001/healthz')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+
+  # FastAPI gateway service (thin client — no local model)
+  api:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - TRANSCRIPTOR_REDIS_URL=redis://redis:6379/0
+      - TRANSCRIPTOR_MODEL_SERVER_URL=http://model-server:8001
+      - TRANSCRIPTOR_API_TOKEN=${TRANSCRIPTOR_API_TOKEN:-}
+      - TRANSCRIPTOR_HF_TOKEN=${TRANSCRIPTOR_HF_TOKEN:-}
+    depends_on:
+      redis:
+        condition: service_healthy
+      model-server:
+        condition: service_healthy
+
+  # Distributed worker service (thin client — pulls chunks, calls the model-server)
+  worker:
+    build: .
+    command: ["python", "-m", "app.worker.worker"]
+    environment:
+      - TRANSCRIPTOR_REDIS_URL=redis://redis:6379/0
+      - TRANSCRIPTOR_MODEL_SERVER_URL=http://model-server:8001
+      - TRANSCRIPTOR_HF_TOKEN=${TRANSCRIPTOR_HF_TOKEN:-}
+    depends_on:
+      redis:
+        condition: service_healthy
+      model-server:
+        condition: service_healthy
+
+volumes:
+  redis_data:
+  hf_cache:

@@ -1,0 +1,45 @@
+[project]
+name = "transcriptor"
+version = "0.1.0"
+description = "Upload a media file, get a transcription. Chunked, streamed, traceable."
+requires-python = ">=3.11,<3.13"
+dependencies = [
+    "fastapi>=0.111",
+    "uvicorn[standard]>=0.30",
+    "python-multipart>=0.0.9",   # multipart/form-data uploads
+    "sse-starlette>=2.1",        # Server-Sent Events for real-time sync mode
+    "pydantic>=2.7",
+    "pydantic-settings>=2.3",
+    "python-dotenv>=1.0",        # .env support for pydantic-settings
+    "structlog>=24.1",           # structured JSON logs (Splunk-friendly)
+    "numpy>=1.26",
+    "soundfile>=0.12",           # encode chunks to WAV (hosted backend)
+    "imageio-ffmpeg>=0.5",       # bundled ffmpeg binary, no system install
+    "transformers>=4.42",        # local Whisper
+    "torch>=2.2",                # local inference (CPU)
+    "httpx>=0.27",               # hosted backend: direct calls to the HF router
+    "redis>=5.0",                # Stage B: shared queue + state store
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.2",
+    "pytest-asyncio>=0.23",
+    "httpx>=0.27",               # async test client
+    "jiwer>=3.0",                # word error rate for the e2e test
+    "fakeredis>=2.20",           # in-process Redis for the Stage B async test
+]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["app*"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+markers = [
+    "e2e: end-to-end test that runs the real model on a real recording (slow).",
+]

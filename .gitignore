@@ -1,0 +1,11 @@
+.venv/
+__pycache__/
+*.pyc
+.env
+.pytest_cache/
+tests/e2e/fixtures/*
+!tests/e2e/fixtures/.gitkeep
+*.egg-info/
+
+# Local scratch / personal test media (not part of the deliverable)
+data/
