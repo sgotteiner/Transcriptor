@@ -4,7 +4,7 @@ Upload a media file, get a transcription — built to production-grade backend
 standards. This doc is the **what and why**; exact schemas, endpoints, module
 layout and run steps are in [IMPLEMENTATION_PLAN.md](./IMPLEMENTATION_PLAN.md)
 (as-built) and the rationale/alternatives for each choice are in
-[DECISIONS.md](./DECISIONS.md) (referenced as `D1`…`D20`). One-page skim:
+[DECISIONS.md](./DECISIONS.md). One-page skim:
 [SUMMARY.md](./SUMMARY.md).
 
 ---
@@ -73,7 +73,7 @@ overlap), how (`tier`, `backend_used`), where (`worker_id`), when
 - **Sync** runs on an **in-process priority scheduler** (it needs the live stream).
 - **Async** runs in-process by default; with `REDIS_URL` set it becomes a **shared
   Redis queue drained by separate `worker` processes**, with job/chunk state and
-  lineage in Redis so any worker handles any chunk (D19). This is what makes
+  lineage in Redis so any worker handles any chunk. This is what makes
   "which worker processed this chunk" a real cross-process fact and the local,
   no-Docker stand-in for K8s worker pods.
 - **State store** and **queue** sit behind interfaces: in-memory (default) ↔ Redis
@@ -90,7 +90,7 @@ Both chunk and reduce in time order; they differ in *delivery*.
 - **Async — queued.** Upload returns a `job_id`; the client polls
   `GET /jobs/{id}`. Best for long/batch work and surviving a disconnect.
 
-## 6. Concurrency: the IO-vs-compute seam (D6, D7)
+## 6. Concurrency: the IO-vs-compute seam
 
 Rule: **never sit idle, but parallelise the right thing with the right mechanism.**
 
@@ -110,12 +110,12 @@ and fairness**, so the pool defaults to 2 and dispatch is priority-aware. Real
   later one that finished early); concurrency there buys pipelining, not reordering.
 - **Between jobs:** arrival-ordered backfill — workers stay 100% utilised and a
   later file's chunks start the instant a worker frees, but it's not fair-share. A
-  fair-share scheduler was considered and deferred (**D20**).
+  fair-share scheduler was considered and deferred.
 - **Admission control:** a `MAX_CONCURRENT_CHUNKS` cap bounds in-flight chunks
   (local: the pool size; hosted: a concurrent-call cap that also guards HF 429s);
-  excess waits in the queue. Distinct from cross-worker distribution (D16).
+  excess waits in the queue. Distinct from cross-worker distribution.
 
-## 7. Backends & models (D4, D5, D18)
+## 7. Backends & models
 
 One `TranscriptionBackend` interface, two implementations, chosen per request:
 
@@ -132,13 +132,13 @@ back to local and records `backend_used=local` in the chunk's lineage, so a mixe
 job is fully auditable; the strong tier has no local model, so it surfaces the
 error instead.
 
-**Scaling local inference (D21):** setting `MODEL_SERVER_URL` swaps the in-process
+**Scaling local inference:** setting `MODEL_SERVER_URL` swaps the in-process
 local backend for a thin HTTP client to a shared **model-server** container, so the
 model is loaded once for all workers instead of once per process. The three tiers
 then form one spectrum through the same interface:
 **in-process → self-hosted model-server → HF hosted.**
 
-## 8. Chunking (D14)
+## 8. Chunking
 
 Fixed-size windows with a small left-overlap, stitched by dropping duplicated words
 at each seam — deterministic (good for lineage) and boundary-safe. Chunk length is
@@ -152,10 +152,10 @@ noted future improvement.
   by-product.
 - **Structured JSON logs**, keyed by `job_id`/`chunk_id`/`worker_id`, flushed per
   line, in a shape **Splunk** ingests directly (filter `job_id=… chunk_id=…`). An
-  optional Splunk HEC handler is env-gated (D10).
+  optional Splunk HEC handler is env-gated.
 - **Health:** `/healthz` for K8s probes. Metrics (chunks/sec, queue depth) are a
   noted next step.
-- **Security (D11):** a static API token (bearer / `X-API-Key`) gates non-public
+- **Security:** a static API token (bearer / `X-API-Key`) gates non-public
   endpoints — access control without a user system. Kept distinct from the HF
   token. Generalises to OIDC/mTLS + K8s Secrets/Vault in a real deployment.
 
@@ -163,7 +163,7 @@ noted future improvement.
 
 - **Within a file:** its chunks fan across workers — faster with more workers.
 - **Across files:** chunks share the worker pool, parallel up to the worker count
-  with no idle time, then queue (D20).
+  with no idle time, then queue.
 - **Scale is operational, not code:** add worker processes
   (`python -m app.worker.worker` ×N; K8s pods with a Service/HPA in front).
   Workers are stateless and interchangeable.

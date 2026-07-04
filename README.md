@@ -13,6 +13,9 @@ Inference API for a stronger model.
 > [`docs/`](./docs) (`DESIGN.md`, `IMPLEMENTATION_PLAN.md`, `DECISIONS.md`,
 > `SUMMARY.md`).
 
+> [!TIP]
+> For a clean, minimal list of just the setup commands, flags, and configurations, see [`setup.md`](./setup.md).
+
 ---
 
 ## Run it (Stage A — no Docker, no Redis)

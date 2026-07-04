@@ -29,7 +29,7 @@ implementation (default) and a Redis one (opt-in). Nothing else knows the differ
 - **Local backend:** `transformers` + `torch`, `whisper-tiny`, model loaded once
   per process and shared, inference on a priority-scheduled thread pool.
 - **Hosted backend:** direct `httpx` POST to the HF router (`whisper-large-v3`) —
-  not `huggingface_hub` (D18).
+  not `huggingface_hub`.
 - **SSE:** `sse-starlette`. **Config:** `pydantic-settings`. **Logs:** `structlog`
   JSON to stdout (flushed per line), keyed by `job_id`/`chunk_id`/`worker_id`.
 - **Stage B:** `redis` (async client). **Tests:** `pytest`, `pytest-asyncio`,
@@ -132,7 +132,7 @@ Multi-file upload = the browser issues one `POST /jobs` per file.
 - Stage B async — Redis store + queue + worker process, verified with `fakeredis`
   (shared server simulating API + worker), plus the run recipe in the README. A live
   multi-process demo needs a real Redis (WSL `apt install redis-server`, or Memurai).
-- Shared inference server (D21) — optional `model-server` container; `MODEL_SERVER_URL`
+- Shared inference server — optional `model-server` container; `MODEL_SERVER_URL`
   makes api/workers thin HTTP clients so the model loads once (not per worker).
   Verified locally end-to-end (server warms `tiny`, the HTTP backend transcribes a
   real clip correctly); wired into `docker-compose` behind a healthcheck.
